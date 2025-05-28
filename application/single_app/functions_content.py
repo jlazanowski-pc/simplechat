@@ -3,6 +3,7 @@
 from config import *
 from functions_settings import *
 from functions_logging import *
+from functions_vision import *
 
 def extract_text_file(file_path):
     with open(file_path, 'r', encoding='utf-8') as f:
@@ -12,7 +13,7 @@ def extract_markdown_file(file_path):
     with open(file_path, 'r', encoding='utf-8') as f:
         return f.read()
 
-def extract_content_with_azure_di(file_path):
+def extract_content_with_azure_di(file_path, file_ext):
     """
     Extracts text page-by-page using Azure Document Intelligence "prebuilt-read"
     and returns a list of dicts, each containing page_number and content.
@@ -108,6 +109,29 @@ def extract_content_with_azure_di(file_path):
         #     user_id=user_id,
         #     content=f"DI extraction processed data: {pages_data}"
         # )
+        
+        # ───────────────────────────────────────────────────────────────
+        # ➕  GPT-4o-mini Vision enrichment (runs for every image file)
+        # ───────────────────────────────────────────────────────────────
+        from pathlib import Path
+        print("Running vision enrichment on file:", file_path)
+        if (file_ext).lower() in {
+            ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".gif", ".heic"
+        }:
+            try:
+                
+                with open(file_path, "rb") as _img_f:
+                    vision_summary = analyze_image(_img_f.read())
+
+                next_page = (pages_data[-1]["page_number"] if pages_data else 0) + 1
+                pages_data.append({
+                    "page_number": next_page,
+                    "content": vision_summary.strip()
+                })
+            except Exception as vision_ex:
+                # Soft-fail so DI OCR result is still returned
+                print(f"[Vision] error on {file_path}: {vision_ex}")
+
 
         return pages_data
 

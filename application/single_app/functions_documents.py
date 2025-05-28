@@ -6,6 +6,7 @@ from functions_settings import *
 from functions_search import *
 from functions_logging import *
 from functions_authentication import *
+from functions_vision import *
 
 def allowed_file(filename, allowed_extensions=None):
     if not allowed_extensions:
@@ -2509,10 +2510,30 @@ def process_di_document(document_id, user_id, temp_file_path, original_filename,
         elif is_pdf or is_ppt:
             final_chunks_to_save = di_extracted_pages # Use DI pages/slides directly
         elif is_image:
+            # ── 1️⃣ keep whatever Azure Document Intelligence managed to OCR ─────────
             if di_extracted_pages:
-                 if 'page_number' not in di_extracted_pages[0]: di_extracted_pages[0]['page_number'] = 1
-                 final_chunks_to_save = di_extracted_pages
-            else: final_chunks_to_save = [] # No text extracted
+                if 'page_number' not in di_extracted_pages[0]:
+                    di_extracted_pages[0]['page_number'] = 1
+                final_chunks_to_save = di_extracted_pages
+            else:
+                final_chunks_to_save = []                                       # DI found no text
+
+            # ── 2️⃣ ALWAYS enrich with GPT-4o-mini Vision ──────────────────────────
+            try:
+                with open(chunk_path, "rb") as _img_f:
+                    vision_summary = analyze_image(
+                        _img_f.read(),
+                        prompt="Provide a concise but comprehensive description of this image "
+                            "so it can be searched and cited later."
+                    )
+                next_page = (final_chunks_to_save[-1]["page_number"] + 1) if final_chunks_to_save else 1
+                final_chunks_to_save.append({
+                    "page_number": next_page,
+                    "text": vision_summary
+                })
+            except Exception as e:
+                print(f"[Vision] unable to analyze {chunk_effective_filename}: {e}")
+
 
         # Save Final Chunks to Search Index
         num_final_chunks = len(final_chunks_to_save)

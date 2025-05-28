@@ -99,7 +99,7 @@ def register_route_frontend_chats(app):
 
         try:
             if file_ext in ['.pdf', '.docx', '.pptx', '.html', '.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif', '.heif']:
-                extracted_content  = extract_content_with_azure_di(temp_file_path)
+                extracted_content  = extract_content_with_azure_di(temp_file_path, file_ext)
             elif file_ext == '.txt':
                 extracted_content  = extract_text_file(temp_file_path)
             elif file_ext == '.md':
