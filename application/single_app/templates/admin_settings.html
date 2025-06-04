@@ -428,6 +428,12 @@
                 </button>
             </li>
             <li class="nav-item" role="presentation">
+                <button class="nav-link" id="vision-tab" data-bs-toggle="tab" data-bs-target="#vision"
+                    type="button" role="tab" aria-controls="vision" aria-selected="false">
+                    Vision
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link" id="workspaces-tab" data-bs-toggle="tab" data-bs-target="#workspaces" type="button"
                     role="tab" aria-controls="workspaces" aria-selected="false">
                     Workspaces
@@ -1004,6 +1010,108 @@
                     Test Image Connection
                 </button>
                 <div id="test_image_result" class="mt-2"></div>
+            </div>
+
+            <div class="tab-pane fade" id="vision" role="tabpanel" aria-labelledby="vision-tab">
+                <p class="text-muted">
+                    Configure settings for GPT-4o vision deployments.
+                </p>
+
+                <div class="form-group form-check form-switch mb-3 d-flex align-items-center">
+                    <input type="checkbox" class="form-check-input me-2" id="enable_vision_apim"
+                        name="enable_vision_apim" {% if settings.enable_vision_apim %}checked{% endif %}>
+                    <label class="form-check-label" for="enable_vision_apim">Use APIM instead of direct to Azure
+                        OpenAI endpoint.</label>
+                </div>
+
+                <div id="non_apim_vision_settings" {% if settings.enable_vision_apim %}style="display: none;" {% endif %}>
+                    <div class="card p-3 mb-3">
+                        <div class="mb-3">
+                            <label for="azure_openai_vision_endpoint" class="form-label">Azure OpenAI Vision Endpoint</label>
+                            <input type="text" class="form-control" id="azure_openai_vision_endpoint"
+                                name="azure_openai_vision_endpoint" value="{{ settings.azure_openai_vision_endpoint or '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="azure_openai_vision_authentication_type" class="form-label">Authentication Type</label>
+                            <select class="form-select" id="azure_openai_vision_authentication_type"
+                                name="azure_openai_vision_authentication_type">
+                                <option value="key" {% if settings.azure_openai_vision_authentication_type=='key' %}selected{% endif %}>Key</option>
+                                <option value="managed_identity" {% if settings.azure_openai_vision_authentication_type=='managed_identity' %}selected{% endif %}>Managed Identity</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="azure_openai_vision_subscription_id" class="form-label">Subscription ID</label>
+                            <input type="text" class="form-control" id="azure_openai_vision_subscription_id"
+                                name="azure_openai_vision_subscription_id" value="{{ settings.azure_openai_vision_subscription_id or '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="azure_openai_vision_resource_group" class="form-label">Resource Group</label>
+                            <input type="text" class="form-control" id="azure_openai_vision_resource_group"
+                                name="azure_openai_vision_resource_group" value="{{ settings.azure_openai_vision_resource_group or '' }}">
+                        </div>
+                        <div class="mb-3" id="vision_key_container" {% if settings.azure_openai_vision_authentication_type != 'key' %}style="display: none;" {% endif %}>
+                            <label for="azure_openai_vision_key" class="form-label">Azure OpenAI Vision Key</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="azure_openai_vision_key"
+                                    name="azure_openai_vision_key" value="{{ settings.azure_openai_vision_key or '' }}">
+                                <button type="button" class="btn btn-outline-secondary" id="toggle_vision_key">Show</button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div id="vision_models_list" class="mt-2 mb-3"></div>
+
+                            <input type="hidden" name="vision_model_json" id="vision_model_json" />
+                            <input type="hidden" id="vision_model" value="{{ settings.vision_model.selected[0].deploymentName if settings.vision_model.selected else '' }}" />
+
+                            <button type="button" class="btn btn-secondary" id="fetch_vision_models_btn">
+                                Fetch Vision Models
+                            </button>
+                        </div>
+                        <a href="#" class="fw-bold text-decoration-none mb-2" data-bs-toggle="collapse" data-bs-target="#advancedVisionFields" aria-expanded="false" aria-controls="advancedVisionFields">
+                            Show Advanced
+                        </a>
+                        <div class="collapse" id="advancedVisionFields">
+                            <div class="card card-body mt-2">
+                                <div class="mb-3">
+                                    <label for="azure_openai_vision_api_version" class="form-label">Azure OpenAI Vision API Version</label>
+                                    <input type="text" class="form-control" id="azure_openai_vision_api_version"
+                                        name="azure_openai_vision_api_version" value="{{ settings.azure_openai_vision_api_version or '' }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="apim_vision_settings" class="card p-3 mb-3" {% if not settings.enable_vision_apim %}style="display: none;" {% endif %}>
+                    <div class="mb-3">
+                        <label for="azure_apim_vision_endpoint" class="form-label">Azure APIM Endpoint</label>
+                        <input type="text" class="form-control" id="azure_apim_vision_endpoint"
+                            name="azure_apim_vision_endpoint" value="{{ settings.azure_apim_vision_endpoint or '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="azure_apim_vision_api_version" class="form-label">Azure APIM API Version</label>
+                        <input type="text" class="form-control" id="azure_apim_vision_api_version"
+                            name="azure_apim_vision_api_version" value="{{ settings.azure_apim_vision_api_version or '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="azure_apim_vision_deployment" class="form-label">Azure APIM Deployment</label>
+                        <input type="text" class="form-control" id="azure_apim_vision_deployment"
+                            name="azure_apim_vision_deployment" value="{{ settings.azure_apim_vision_deployment or '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="azure_apim_vision_subscription_key" class="form-label">Azure APIM Subscription Key</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="azure_apim_vision_subscription_key"
+                                name="azure_apim_vision_subscription_key" value="{{ settings.azure_apim_vision_subscription_key or '' }}">
+                            <button type="button" class="btn btn-outline-secondary" id="toggle_azure_apim_vision_subscription_key">Show</button>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="button" class="btn btn-secondary mt-3" id="test_vision_button">
+                    Test Vision Connection
+                </button>
+                <div id="test_vision_result" class="mt-2"></div>
             </div>
 
             
@@ -2164,6 +2272,9 @@
 
     window.imageSelected = JSON.parse('{{ settings.image_gen_model.selected|tojson()|safe }}' || '[]');
     window.imageAll      = JSON.parse('{{ settings.image_gen_model.all|tojson()|safe }}' || '[]');
+
+    window.visionSelected = JSON.parse('{{ settings.vision_model.selected|tojson()|safe }}' || '[]');
+    window.visionAll      = JSON.parse('{{ settings.vision_model.all|tojson()|safe }}' || '[]');
 
     // *** NEW: Classification Data ***
     try {

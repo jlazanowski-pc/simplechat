@@ -189,6 +189,7 @@ def register_route_frontend_admin_settings(app):
             gpt_model_json = form_data.get('gpt_model_json', '')
             embedding_model_json = form_data.get('embedding_model_json', '')
             image_gen_model_json = form_data.get('image_gen_model_json', '')
+            vision_model_json = form_data.get('vision_model_json', '')
             try:
                 gpt_model_obj = json.loads(gpt_model_json) if gpt_model_json else {'selected': [], 'all': []}
             except Exception as e:
@@ -208,6 +209,12 @@ def register_route_frontend_admin_settings(app):
                 print(f"Error parsing image_gen_model_json: {e}")
                 flash('Error parsing Image Gen model data. Changes may not be saved.', 'warning')
                 image_gen_model_obj = settings.get('image_gen_model', {'selected': [], 'all': []}) # Fallback
+            try:
+                vision_model_obj = json.loads(vision_model_json) if vision_model_json else {'selected': [], 'all': []}
+            except Exception as e:
+                print(f"Error parsing vision_model_json: {e}")
+                flash('Error parsing Vision model data. Changes may not be saved.', 'warning')
+                vision_model_obj = settings.get('vision_model', {'selected': [], 'all': []}) # Fallback
 
             # --- Extract banner fields from form_data ---
             classification_banner_enabled = form_data.get('classification_banner_enabled') == 'on'
@@ -266,6 +273,20 @@ def register_route_frontend_admin_settings(app):
                 'azure_apim_image_gen_subscription_key': form_data.get('azure_apim_image_gen_subscription_key', '').strip(),
                 'azure_apim_image_gen_deployment': form_data.get('azure_apim_image_gen_deployment', '').strip(),
                 'azure_apim_image_gen_api_version': form_data.get('azure_apim_image_gen_api_version', '').strip(),
+
+                # Vision (Direct & APIM)
+                'enable_vision_apim': form_data.get('enable_vision_apim') == 'on',
+                'azure_openai_vision_endpoint': form_data.get('azure_openai_vision_endpoint', '').strip(),
+                'azure_openai_vision_api_version': form_data.get('azure_openai_vision_api_version', '').strip(),
+                'azure_openai_vision_authentication_type': form_data.get('azure_openai_vision_authentication_type', 'key'),
+                'azure_openai_vision_subscription_id': form_data.get('azure_openai_vision_subscription_id', '').strip(),
+                'azure_openai_vision_resource_group': form_data.get('azure_openai_vision_resource_group', '').strip(),
+                'azure_openai_vision_key': form_data.get('azure_openai_vision_key', '').strip(),
+                'vision_model': vision_model_obj,
+                'azure_apim_vision_endpoint': form_data.get('azure_apim_vision_endpoint', '').strip(),
+                'azure_apim_vision_subscription_key': form_data.get('azure_apim_vision_subscription_key', '').strip(),
+                'azure_apim_vision_deployment': form_data.get('azure_apim_vision_deployment', '').strip(),
+                'azure_apim_vision_api_version': form_data.get('azure_apim_vision_api_version', '').strip(),
 
                 # Workspaces
                 'enable_user_workspace': form_data.get('enable_user_workspace') == 'on',

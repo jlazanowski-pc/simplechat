@@ -7,7 +7,10 @@ from __future__ import annotations
 from typing import Union
 from openai import AzureOpenAI
 from PIL import Image
-import base64, io, os, functools
+import base64, io, functools
+
+from config import *
+from functions_settings import *
 
 def _b64(data: Union[bytes, Image.Image]) -> str:
     if isinstance(data, Image.Image):
@@ -18,10 +21,28 @@ def _b64(data: Union[bytes, Image.Image]) -> str:
 
 @functools.lru_cache
 def _client() -> AzureOpenAI:
+    settings = get_settings()
+    if settings.get("enable_vision_apim"):
+        return AzureOpenAI(
+            api_version=settings.get("azure_apim_vision_api_version"),
+            azure_endpoint=settings.get("azure_apim_vision_endpoint"),
+            api_key=settings.get("azure_apim_vision_subscription_key"),
+        )
+
+    if settings.get("azure_openai_vision_authentication_type") == "managed_identity":
+        token_provider = get_bearer_token_provider(
+            DefaultAzureCredential(), "https://cognitiveservices.azure.com/.default"
+        )
+        return AzureOpenAI(
+            api_version=settings.get("azure_openai_vision_api_version"),
+            azure_endpoint=settings.get("azure_openai_vision_endpoint"),
+            azure_ad_token_provider=token_provider,
+        )
+
     return AzureOpenAI(
-        azure_endpoint=os.environ["AZURE_OPENAI_VISION_ENDPOINT"],
-        api_key=os.environ["AZURE_OPENAI_VISION_API_KEY"],
-        api_version=os.getenv("AZURE_OPENAI_VISION_VERSION", "2024-02-15-preview"),
+        api_version=settings.get("azure_openai_vision_api_version"),
+        azure_endpoint=settings.get("azure_openai_vision_endpoint"),
+        api_key=settings.get("azure_openai_vision_key"),
     )
 
 def analyze_image(
@@ -33,11 +54,22 @@ def analyze_image(
     max_tokens: int = 512,
 ) -> str:
     
-    print("We're in analyze_image")
-    model_name = deployment or os.getenv("AZURE_OPENAI_VISION_DEPLOYMENT", "gpt-4o-mini-vision")
+    settings = get_settings()
+    model_name = deployment
+
+    if not model_name:
+        if settings.get("enable_vision_apim"):
+            model_name = settings.get("azure_apim_vision_deployment")
+        else:
+            vision_model_obj = settings.get("vision_model", {})
+            if vision_model_obj and vision_model_obj.get("selected"):
+                selected = vision_model_obj["selected"][0]
+                model_name = selected.get("deploymentName")
+        model_name = model_name or settings.get("azure_openai_vision_deployment")
+
     print(f"[Vision] using deployment: {model_name}")
     res = _client().chat.completions.create(
-        model=deployment or os.getenv("AZURE_OPENAI_VISION_DEPLOYMENT", "gpt-4o-mini"),
+        model=model_name,
         messages=[{
             "role": "user",
             "content": [

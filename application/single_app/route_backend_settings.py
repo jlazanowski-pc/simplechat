@@ -133,6 +133,9 @@ def register_route_backend_settings(app):
             elif test_type == 'image':
                 return _test_image_gen_connection(data)
 
+            elif test_type == 'vision':
+                return _test_vision_connection(data)
+
             elif test_type == 'safety':
                 return _test_safety_connection(data)
 
@@ -337,6 +340,64 @@ def _test_image_gen_connection(payload):
     except Exception as e:
         print(str(e))
         return jsonify({'error': f'Error generating model response: {str(e)}'}), 500
+
+
+def _test_vision_connection(payload):
+    """Attempt to connect to a vision-enabled GPT deployment."""
+    enable_apim = payload.get('enable_apim', False)
+    selected_model = payload.get('selected_model') or {}
+    img_b64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z/CfAQADmQL/rPtONQAAAABJRU5ErkJggg=='
+
+    if enable_apim:
+        apim_data = payload.get('apim', {})
+        endpoint = apim_data.get('endpoint')
+        api_version = apim_data.get('api_version')
+        vision_model = apim_data.get('deployment')
+        subscription_key = apim_data.get('subscription_key')
+
+        vision_client = AzureOpenAI(
+            api_version=api_version,
+            azure_endpoint=endpoint,
+            api_key=subscription_key
+        )
+    else:
+        direct_data = payload.get('direct', {})
+        endpoint = direct_data.get('endpoint')
+        api_version = direct_data.get('api_version')
+        vision_model = selected_model.get('deploymentName')
+
+        if direct_data.get('auth_type') == 'managed_identity':
+            token_provider = get_bearer_token_provider(DefaultAzureCredential(), "https://cognitiveservices.azure.com/.default")
+            vision_client = AzureOpenAI(
+                api_version=api_version,
+                azure_endpoint=endpoint,
+                azure_ad_token_provider=token_provider
+            )
+        else:
+            key = direct_data.get('key')
+            vision_client = AzureOpenAI(
+                api_version=api_version,
+                azure_endpoint=endpoint,
+                api_key=key
+            )
+
+    try:
+        response = vision_client.chat.completions.create(
+            model=vision_model,
+            messages=[{
+                'role': 'user',
+                'content': [
+                    {'type': 'text', 'text': 'test'},
+                    {'type': 'image_url', 'image_url': {'url': f'data:image/png;base64,{img_b64}'}}
+                ]
+            }],
+            max_tokens=5
+        )
+        if response:
+            return jsonify({'message': 'Vision connection successful'}), 200
+    except Exception as e:
+        print(str(e))
+        return jsonify({'error': f'Error testing vision: {str(e)}'}), 500
 
 
 def _test_safety_connection(payload):
