@@ -66,6 +66,23 @@ def get_settings():
         'azure_apim_image_gen_deployment': '',
         'azure_apim_image_gen_api_version': '',
 
+        # Vision (GPT-4o) Settings
+        'enable_vision_apim': False,
+        'azure_openai_vision_endpoint': '',
+        'azure_openai_vision_api_version': '2024-02-15-preview',
+        'azure_openai_vision_authentication_type': 'key',
+        'azure_openai_vision_subscription_id': '',
+        'azure_openai_vision_resource_group': '',
+        'azure_openai_vision_key': '',
+        'vision_model': {
+            "selected": [],
+            "all": []
+        },
+        'azure_apim_vision_endpoint': '',
+        'azure_apim_vision_subscription_key': '',
+        'azure_apim_vision_deployment': '',
+        'azure_apim_vision_api_version': '',
+
         # Workspaces
         'enable_user_workspace': True,
         'enable_group_workspaces': True,

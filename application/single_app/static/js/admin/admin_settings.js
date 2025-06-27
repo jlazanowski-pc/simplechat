@@ -9,6 +9,9 @@ let embeddingAll      = window.embeddingAll || [];
 let imageSelected = window.imageSelected || [];
 let imageAll      = window.imageAll || [];
 
+let visionSelected = window.visionSelected || [];
+let visionAll      = window.visionAll || [];
+
 let classificationCategories = window.classificationCategories || [];
 let enableDocumentClassification = window.enableDocumentClassification || false;
 
@@ -30,10 +33,12 @@ document.addEventListener('DOMContentLoaded', () => {
     renderGPTModels();
     renderEmbeddingModels();
     renderImageModels();
+    renderVisionModels();
 
     updateGptHiddenInput();
     updateEmbeddingHiddenInput();
     updateImageHiddenInput();
+    updateVisionHiddenInput();
 
     setupToggles(); // This function will be extended below
     
@@ -319,6 +324,75 @@ function updateImageHiddenInput() {
         all: imageAll
     };
     imgInput.value = JSON.stringify(payload);
+}
+
+function renderVisionModels() {
+    const listDiv = document.getElementById('vision_models_list');
+    if (!listDiv) return;
+
+    if (!visionAll || visionAll.length === 0) {
+        listDiv.innerHTML = '<p class="text-warning">No vision models found. Click "Fetch Vision Models" to populate.</p>';
+        return;
+    }
+
+    let html = '<ul class="list-group">';
+    visionAll.forEach(m => {
+        const isSelected = visionSelected.some(sel =>
+            sel.deploymentName === m.deploymentName && sel.modelName === m.modelName
+        );
+        const buttonLabel = isSelected ? 'Selected' : 'Select';
+        const buttonDisabled = isSelected ? 'disabled' : '';
+        html += `
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>${m.deploymentName} (Model: ${m.modelName})</span>
+                <button class="btn btn-sm btn-primary" ${buttonDisabled}
+                    onclick="selectVisionModel('${m.deploymentName}', '${m.modelName}')">
+                    ${buttonLabel}
+                </button>
+            </li>
+        `;
+    });
+    html += '</ul>';
+    listDiv.innerHTML = html;
+}
+
+const fetchVisionBtn = document.getElementById('fetch_vision_models_btn');
+if (fetchVisionBtn) {
+    fetchVisionBtn.addEventListener('click', async () => {
+        const listDiv = document.getElementById('vision_models_list');
+        listDiv.innerHTML = 'Fetching...';
+        try {
+            const resp = await fetch('/api/models/vision');
+            const data = await resp.json();
+            if (resp.ok && data.models && data.models.length > 0) {
+                visionAll = data.models;
+                renderVisionModels();
+                updateVisionHiddenInput();
+            } else {
+                listDiv.innerHTML = `<p class="text-danger">Error: ${data.error || 'No vision models found'}</p>`;
+            }
+        } catch (err) {
+            listDiv.innerHTML = `<p class="text-danger">Error fetching vision models: ${err.message}</p>`;
+        }
+    });
+}
+
+window.selectVisionModel = (deploymentName, modelName) => {
+    visionSelected = [{ deploymentName, modelName }];
+    document.getElementById('vision_model').value = deploymentName;
+    renderVisionModels();
+    updateVisionHiddenInput();
+    markFormAsModified();
+};
+
+function updateVisionHiddenInput() {
+    const input = document.getElementById('vision_model_json');
+    if (!input) return;
+    const payload = {
+        selected: visionSelected,
+        all: visionAll
+    };
+    input.value = JSON.stringify(payload);
 }
 
 // --- Helper to escape HTML for input values ---
@@ -718,6 +792,15 @@ function setupToggles() {
         });
     }
 
+    const enableVisionApim = document.getElementById('enable_vision_apim');
+    if (enableVisionApim) {
+        enableVisionApim.addEventListener('change', function () {
+            document.getElementById('non_apim_vision_settings').style.display = this.checked ? 'none' : 'block';
+            document.getElementById('apim_vision_settings').style.display = this.checked ? 'block' : 'none';
+            markFormAsModified();
+        });
+    }
+
     const enableEnhancedCitation = document.getElementById('enable_enhanced_citations');
     if (enableEnhancedCitation) {
         toggleEnhancedCitation(enableEnhancedCitation.checked);
@@ -802,6 +885,15 @@ function setupToggles() {
     if (imgAuthType) {
         imgAuthType.addEventListener('change', function () {
             document.getElementById('image_gen_key_container').style.display =
+                (this.value === 'key') ? 'block' : 'none';
+            markFormAsModified();
+        });
+    }
+
+    const visionAuthType = document.getElementById('azure_openai_vision_authentication_type');
+    if (visionAuthType) {
+        visionAuthType.addEventListener('change', function () {
+            document.getElementById('vision_key_container').style.display =
                 (this.value === 'key') ? 'block' : 'none';
             markFormAsModified();
         });
@@ -1016,6 +1108,56 @@ function setupTestButtons() {
                     resultDiv.innerHTML = `<span class="text-success">${data.message}</span>`;
                 } else {
                     resultDiv.innerHTML = `<span class="text-danger">${data.error || 'Error testing Image Gen'}</span>`;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<span class="text-danger">Error: ${err.message}</span>`;
+            }
+        });
+    }
+
+    const testVisionBtn = document.getElementById('test_vision_button');
+    if (testVisionBtn) {
+        testVisionBtn.addEventListener('click', async () => {
+            const resultDiv = document.getElementById('test_vision_result');
+            resultDiv.innerHTML = 'Testing Vision...';
+
+            const enableApim = document.getElementById('enable_vision_apim').checked;
+
+            const payload = {
+                test_type: 'vision',
+                enable_apim: enableApim,
+                selected_model: visionSelected[0] || null
+            };
+
+            if (enableApim) {
+                payload.apim = {
+                    endpoint: document.getElementById('azure_apim_vision_endpoint').value,
+                    api_version: document.getElementById('azure_apim_vision_api_version').value,
+                    deployment: document.getElementById('azure_apim_vision_deployment').value,
+                    subscription_key: document.getElementById('azure_apim_vision_subscription_key').value
+                };
+            } else {
+                payload.direct = {
+                    endpoint: document.getElementById('azure_openai_vision_endpoint').value,
+                    auth_type: document.getElementById('azure_openai_vision_authentication_type').value,
+                    subscription_id: document.getElementById('azure_openai_vision_subscription_id').value,
+                    resource_group: document.getElementById('azure_openai_vision_resource_group').value,
+                    key: document.getElementById('azure_openai_vision_key').value,
+                    api_version: document.getElementById('azure_openai_vision_api_version').value
+                };
+            }
+
+            try {
+                const resp = await fetch('/api/admin/settings/test_connection', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await resp.json();
+                if (resp.ok) {
+                    resultDiv.innerHTML = `<span class="text-success">${data.message}</span>`;
+                } else {
+                    resultDiv.innerHTML = `<span class="text-danger">${data.error || 'Error testing Vision'}</span>`;
                 }
             } catch (err) {
                 resultDiv.innerHTML = `<span class="text-danger">Error: ${err.message}</span>`;
@@ -1381,6 +1523,8 @@ togglePassword('toggle_docintel_key', 'azure_document_intelligence_key');
 togglePassword('toggle_azure_apim_gpt_subscription_key', 'azure_apim_gpt_subscription_key');
 togglePassword('toggle_azure_apim_embedding_subscription_key', 'azure_apim_embedding_subscription_key');
 togglePassword('toggle_azure_apim_image_gen_subscription_key', 'azure_apim_image_gen_subscription_key');
+togglePassword('toggle_vision_key', 'azure_openai_vision_key');
+togglePassword('toggle_azure_apim_vision_subscription_key', 'azure_apim_vision_subscription_key');
 togglePassword('toggle_azure_apim_content_safety_subscription_key', 'azure_apim_content_safety_subscription_key');
 togglePassword('toggle_azure_apim_web_search_subscription_key', 'azure_apim_web_search_subscription_key');
 togglePassword('toggle_azure_apim_ai_search_subscription_key', 'azure_apim_ai_search_subscription_key');

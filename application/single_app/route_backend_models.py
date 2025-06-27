@@ -68,6 +68,53 @@ def register_route_backend_models(app):
 
         return jsonify({"models": models})
 
+    @app.route('/api/models/vision', methods=['GET'])
+    @login_required
+    @user_required
+    def get_vision_models():
+        """Fetch GPT-4o vision deployments using Azure Mgmt library."""
+        settings = get_settings()
+
+        subscription_id = settings.get('azure_openai_vision_subscription_id', '')
+        resource_group = settings.get('azure_openai_vision_resource_group', '')
+        account_name = settings.get('azure_openai_vision_endpoint', '').split('.')[0].replace("https://", "")
+
+        if not subscription_id or not resource_group or not account_name:
+            return jsonify({"error": "Azure Vision Model subscription/RG/endpoint not configured"}), 400
+
+        if AZURE_ENVIRONMENT == "usgovernment":
+            credential = ClientSecretCredential(TENANT_ID, CLIENT_ID, MICROSOFT_PROVIDER_AUTHENTICATION_SECRET, authority=authority)
+            client = CognitiveServicesManagementClient(
+                credential=credential,
+                subscription_id=subscription_id,
+                base_url=resource_manager,
+                credential_scopes=credential_scopes
+            )
+        else:
+            credential = ClientSecretCredential(TENANT_ID, CLIENT_ID, MICROSOFT_PROVIDER_AUTHENTICATION_SECRET)
+            client = CognitiveServicesManagementClient(
+                credential=credential,
+                subscription_id=subscription_id
+            )
+
+        models = []
+        try:
+            deployments = client.deployments.list(
+                resource_group_name=resource_group,
+                account_name=account_name
+            )
+            for d in deployments:
+                model_name = d.properties.model.name
+                if model_name and ("gpt" in model_name.lower() or "vision" in model_name.lower()):
+                    models.append({
+                        "deploymentName": d.name,
+                        "modelName": model_name
+                    })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+        return jsonify({"models": models})
+
 
     @app.route('/api/models/embedding', methods=['GET'])
     @login_required
