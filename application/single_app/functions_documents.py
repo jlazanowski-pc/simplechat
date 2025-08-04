@@ -1627,7 +1627,7 @@ def extract_document_metadata(document_id, user_id, group_id=None):
                     json.dumps(meta_data), 
                     user_id, 
                     document_id=document_id, 
-                    top_n=12, 
+                    top_n=20, 
                     doc_scope=document_scope
                 )
             elif document_scope == "group":
@@ -1635,7 +1635,7 @@ def extract_document_metadata(document_id, user_id, group_id=None):
                     json.dumps(meta_data), 
                     user_id, 
                     document_id=document_id,
-                    top_n=12, 
+                    top_n=35, 
                     doc_scope=document_scope, 
                     active_group_id=scope_id
                 )
@@ -2537,7 +2537,7 @@ def process_di_document(document_id, user_id, temp_file_path, original_filename,
         update_callback(status=f"Sending {chunk_effective_filename} to Azure Document Intelligence...")
         di_extracted_pages = []
         try:
-            di_extracted_pages = extract_content_with_azure_di(chunk_path)
+            di_extracted_pages = extract_content_with_azure_di(chunk_path, file_ext)
             num_di_pages = len(di_extracted_pages)
             conceptual_pages = num_di_pages if not is_image else 1 # Image is one conceptual item
 

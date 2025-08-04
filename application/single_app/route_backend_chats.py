@@ -348,7 +348,7 @@ def register_route_backend_chats(app):
                 search_args = {
                     "query": search_query,
                     "user_id": user_id,
-                    "top_n": 12,
+                    "top_n": 35,
                     "doc_scope": document_scope,
                     "active_group_id": active_group_id
                 }
@@ -654,7 +654,7 @@ def register_route_backend_chats(app):
 
             # Add the recent messages (user, assistant, relevant system/file messages)
             allowed_roles_in_history = ['user', 'assistant'] # Add 'system' if you PERSIST general system messages not related to augmentation
-            max_file_content_length_in_history = 1000 # Limit file content directly in history
+            max_file_content_length_in_history = 2000000 # Limit file content directly in history
 
             for message in recent_messages:
                 role = message.get('role')
